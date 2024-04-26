@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gender-based Purchase Analysis</title>
+    <style>
+        #tooltip {
+            position: absolute;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+            pointer-events: none;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .legend {
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+        }
+
+        .legend rect {
+            width: 18px;
+            height: 18px;
+            fill: transparent;
+            stroke-width: 2;
+        }
+
+        .legend text {
+            font-size: 14px;
+            fill: #333;
+            font-family: Arial, sans-serif;
+            padding-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="tooltip" class="hidden">
+        <p><strong>Gender:</strong> <span id="gender"></span></p>
+        <p><strong>Percentage:</strong> <span id="percentage"></span></p>
+    </div>
+    <svg id="pie-chart" width="500" height="500"></svg>
+    <div class="legend"></div>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        d3.csv("a1-grocerystoresurvey.csv").then(function(data) {
+            var genderData = d3.rollup(data, v => v.length, d => d.Gender);
+            var pieData = Array.from(genderData, ([gender, count]) => ({ gender, count }));
+            var width = 500;
+            var height = 500;
+            var radius = Math.min(width, height) / 2;
+            var svg = d3.select("#pie-chart")
+                        .attr("width", width)
+                        .attr("height", height)
+                        .append("g")
+                        .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+            var pie = d3.pie()
+                        .value(d => d.count);
+            var arc = d3.arc()
+                        .innerRadius(0)
+                        .outerRadius(radius);
+            var slices = svg.selectAll("slice")
+                            .data(pie(pieData))
+                            .enter()
+                            .append("g");
+            slices.append("path")
+                  .attr("d", arc)
+                  .attr("fill", (d, i) => (i % 2 === 0) ? "orange" : "blue")
+                  .style("cursor", "pointer")
+                  .on("mouseover", handleMouseOver)
+                  .on("mousemove", handleMouseMove)
+                  .on("mouseleave", handleMouseLeave);
+            function handleMouseOver(event, d) {
+                d3.select(this).transition().duration(200).attr("d", d3.arc().innerRadius(0).outerRadius(radius * 1.1));
+                d3.select("#tooltip").classed("hidden", false);
+            }
+            function handleMouseMove(event, d) {
+                d3.select("#tooltip")
+                  .style("left", (event.pageX + 10) + "px")
+                  .style("top", (event.pageY - 30) + "px");
+                d3.select("#gender").text(d.data.gender);
+                d3.select("#percentage").text(((d.endAngle - d.startAngle) / (2 * Math.PI) * 100).toFixed(2) + "%");
+            }
+            function handleMouseLeave(event, d) {
+                d3.select(this).transition().duration(200).attr("d", arc);
+                d3.select("#tooltip").classed("hidden", true);
+            }
+            // Legend
+            var legend = d3.select(".legend");
+            pieData.forEach((d, i) => {
+                var legendRow = legend.append("div")
+                                      .attr("class", "legend-row");
+                legendRow.append("svg")
+                         .attr("width", 20)
+                         .attr("height", 20)
+                         .append("rect")
+                         .attr("width", 18)
+                         .attr("height", 18)
+                         .style("fill", (i % 2 === 0) ? "orange" : "blue")
+                         .style("stroke", "black");
+                legendRow.append("text")
+                         .attr("x", 25)
+                         .attr("y", 13)
+                         .text(d.gender);
+            });
+        });
+    </script>
+</body>
+</html>

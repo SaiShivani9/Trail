@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Income vs Purchase Amount</title>
+    <style>
+        #tooltip {
+            position: absolute;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+            pointer-events: none;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .legend {
+            font-size: 14px;
+        }
+
+        .legend rect {
+            width: 18px;
+            height: 18px;
+            margin-right: 5px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div id="tooltip" class="hidden">
+        <p><strong>Income:</strong> <span id="income"></span></p>
+        <p><strong>Purchase Amount:</strong> <span id="purchase-amount"></span></p>
+    </div>
+    <svg id="scatter-plot" width="1000" height="600"></svg>
+    <div id="legend"></div>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        d3.csv("a1-grocerystoresurvey.csv").then(function(data) {
+            data.forEach(function(d) {
+                d.Income = +d.Income;
+                d.PurchaseAmount = +d.PurchaseAmount;
+                // Categorize data based on income and purchase amount
+                if (d.Income >= 80000 && d.PurchaseAmount >= 500) {
+                    d.category = "High Income, High Purchase";
+                } else if (d.Income >= 80000) {
+                    d.category = "High Income, Low Purchase";
+                } else if (d.PurchaseAmount >= 500) {
+                    d.category = "Low Income, High Purchase";
+                } else {
+                    d.category = "Low Income, Low Purchase";
+                }
+            });
+
+            var margin = { top: 20, right: 30, bottom: 80, left: 80 }, // Increased bottom and left margin for legend
+                width = 1000 - margin.left - margin.right,
+                height = 600 - margin.top - margin.bottom;
+
+            var svg = d3.select("#scatter-plot")
+                        .attr("width", width + margin.left + margin.right)
+                        .attr("height", height + margin.top + margin.bottom)
+                        .append("g")
+                        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            var x = d3.scaleLinear()
+                      .domain([0, d3.max(data, function(d) { return d.Income; })])
+                      .range([0, width]);
+
+            var y = d3.scaleLinear()
+                      .domain([0, d3.max(data, function(d) { return d.PurchaseAmount; })])
+                      .range([height, 0]);
+
+            var xAxis = d3.axisBottom(x);
+            var yAxis = d3.axisLeft(y);
+
+            svg.append("g")
+                .attr("transform", "translate(0," + height + ")")
+                .call(xAxis);
+
+            svg.append("g")
+                .call(yAxis);
+
+            // Define color scale for different categories
+            var color = d3.scaleOrdinal()
+                          .domain(["High Income, High Purchase", "High Income, Low Purchase", "Low Income, High Purchase", "Low Income, Low Purchase"])
+                          .range(["red", "blue", "green", "orange"]);
+
+            svg.selectAll("dot")
+                .data(data)
+                .enter().append("circle")
+                .attr("r", 3) // Decreased point size
+                .attr("cx", function(d) { return x(d.Income); })
+                .attr("cy", function(d) { return y(d.PurchaseAmount); })
+                .style("fill", function(d) { return color(d.category); }) // Assign color based on category
+                .style("cursor", "pointer")
+                .on("mouseover", handleMouseOver)
+                .on("mousemove", handleMouseMove)
+                .on("mouseleave", handleMouseLeave);
+
+            function handleMouseOver(event, d) {
+                d3.select(this).attr("r", 5); // Increase size on hover
+                d3.select("#tooltip").classed("hidden", false);
+            }
+
+            function handleMouseMove(event, d) {
+                d3.select("#tooltip")
+                  .style("left", (event.pageX + 10) + "px")
+                  .style("top", (event.pageY - 30) + "px");
+                d3.select("#income").text(d.Income);
+                d3.select("#purchase-amount").text(d.PurchaseAmount);
+            }
+
+            function handleMouseLeave(event, d) {
+                d3.select(this).attr("r", 3); // Revert size
+                d3.select("#tooltip").classed("hidden", true);
+            }
+
+            // Label for X Axis
+            svg.append("text")             
+                .attr("transform",
+                      "translate(" + (width/2) + " ," + 
+                                     (height + margin.top + 20) + ")")
+                .style("text-anchor", "middle")
+                .text("Income");
+
+            // Label for Y Axis
+            svg.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left)
+                .attr("x",0 - (height / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .text("Purchase Amount");
+
+            // Legend
+            var legend = d3.select("#legend")
+                           .attr("class", "legend")
+                           .selectAll("div")
+                           .data(color.domain())
+                           .enter().append("div")
+                           .style("margin-right", "20px");
+
+            legend.append("div")
+                  .attr("class", "legend-item")
+                  .style("display", "inline-block")
+                  .style("width", "15px")
+                  .style("height", "15px")
+                  .style("background-color", color)
+                  .style("margin-right", "5px");
+
+            legend.append("text")
+                  .text(function(d) { return d; });
+        });
+    </script>
+</body>
+</html>

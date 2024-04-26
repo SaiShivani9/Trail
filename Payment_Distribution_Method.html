@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Distribution Method</title>
+    <style>
+        .tooltip {
+            position: absolute;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+            pointer-events: none;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="tooltip" class="tooltip"></div>
+    <svg id="bar-chart" width="1000" height="600"></svg>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        d3.csv("a1-grocerystoresurvey.csv").then(function(data) {
+            var paymentMethods = {};
+            data.forEach(function(d) {
+                if (d.PaymentMethod in paymentMethods) {
+                    paymentMethods[d.PaymentMethod]++;
+                } else {
+                    paymentMethods[d.PaymentMethod] = 1;
+                }
+            });
+
+            var margin = { top: 20, right: 30, bottom: 50, left: 50 },
+                width = 1000 - margin.left - margin.right,
+                height = 600 - margin.top - margin.bottom;
+
+            var svg = d3.select("#bar-chart")
+                        .attr("width", width + margin.left + margin.right)
+                        .attr("height", height + margin.top + margin.bottom)
+                        .append("g")
+                        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            var x = d3.scaleBand()
+                      .domain(Object.keys(paymentMethods))
+                      .range([0, width])
+                      .padding(0.1);
+
+            var y = d3.scaleLinear()
+                      .domain([0, d3.max(Object.values(paymentMethods))])
+                      .range([height, 0]);
+
+            svg.selectAll(".bar")
+               .data(Object.entries(paymentMethods))
+               .enter().append("rect")
+               .attr("class", "bar")
+               .attr("x", function(d) { return x(d[0]); })
+               .attr("y", function(d) { return y(d[1]); })
+               .attr("width", x.bandwidth())
+               .attr("height", function(d) { return height - y(d[1]); })
+               .style("fill", "steelblue")
+               .style("cursor", "pointer")
+               .on("click", handleClick)
+               .on("mouseover", handleMouseOver)
+               .on("mousemove", handleMouseMove)
+               .on("mouseleave", handleMouseLeave);
+
+            function handleClick(event, d) {
+                console.log("Clicked on payment method:", d[0]);
+            }
+
+            function handleMouseOver(event, d) {
+                d3.select(this).style("fill", "orange");
+                d3.select("#tooltip").style("opacity", 1);
+            }
+
+            function handleMouseMove(event, d) {
+                d3.select("#tooltip")
+                  .html("Payment Method: " + d[0] + "<br>" + "Count: " + d[1])
+                  .style("left", (event.pageX + 10) + "px")
+                  .style("top", (event.pageY - 30) + "px");
+            }
+
+            function handleMouseLeave(event, d) {
+                d3.select(this).style("fill", "steelblue");
+                d3.select("#tooltip").style("opacity", 0);
+            }
+
+            // Label for X Axis
+            svg.append("text")             
+                .attr("transform",
+                      "translate(" + (width/2) + " ," + 
+                                     (height + margin.top + 20) + ")")
+                .style("text-anchor", "middle")
+                .text("Payment Method");
+
+            // Label for Y Axis
+            svg.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left)
+                .attr("x",0 - (height / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .text("Count");
+
+            // Values on X Axis
+            svg.append("g")
+               .attr("transform", "translate(0," + height + ")")
+               .call(d3.axisBottom(x));
+
+            // Values on Y Axis
+            svg.append("g")
+               .call(d3.axisLeft(y));
+        });
+    </script>
+</body>
+</html>
